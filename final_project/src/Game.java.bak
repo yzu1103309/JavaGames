@@ -1,0 +1,190 @@
+import java.awt.image.BufferedImage;
+import java.util.*;
+import java.awt.*;
+import java.awt.event.*;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.swing.event.*;
+import java.io.*;
+import java.util.Timer;
+
+public class Game extends JFrame{
+    static BufferedImage bg, main_png, materials;
+    static boolean bg_set = false, timer_set = false;
+    static int [][] GameBoard = {
+            //0-可走,1-tree,2-終點,3-敵人,4-rock,5-items,6-moving,7-guarded
+            {2,1,4,5,1,1,5,0,0,5},
+            {0,0,0,5,0,0,0,0,0,0},
+            {7,4,0,0,1,1,4,5,1,0},
+            {7,0,0,5,4,5,0,6,0,1},
+            {4,5,0,0,5,1,0,7,0,0},
+            {6,1,0,5,4,5,1,4,1,5},
+            {7,5,1,0,0,0,4,0,0,0},
+            {0,7,7,5,0,0,1,0,0,0},
+            {0,4,1,0,1,0,4,0,7,1},
+            {0,0,0,0,5,1,0,0,6,2}
+    };
+    static Rectangle src_crop = new Rectangle(0,0,86,86);
+    static int nowX = 0, nowY = 125, grid_px = 90, second = 0;
+    static Label time = new Label("Time: 0");
+    static Label score = new Label("Score: 0/30");
+    static Label status = new Label("Collect all items and escape this place!");
+    static Font font25 = new Font("Microsoft JhengHei",Font.BOLD, 25);
+    static java.util.Timer timer = new Timer();
+    static TimerTask timer_task = new TimerTask() {
+        @Override
+        public void run() {
+            ++second;
+            time.setText("Time: "+second);
+        }
+    };
+
+    public static void main(String [] args) throws IOException
+    {
+        new Game();
+    }
+    public Game() throws IOException
+    {
+        readImg();
+        setLayout(null);
+        setResizable(false);
+
+        setSize(900, 1040);
+        setLocationRelativeTo(null);
+        setVisible(true);
+
+        initLabels();
+
+        add(time);
+        add(status);
+        add(score);
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int k = e.getKeyCode();
+                if(!timer_set)
+                {
+                    if(k == KeyEvent.VK_DOWN || k == KeyEvent.VK_LEFT || k == KeyEvent.VK_UP || k == KeyEvent.VK_RIGHT)
+                    {
+                        timer.scheduleAtFixedRate(timer_task, 1000, 1000);
+                        timer_set = true;
+                    }
+                }
+                if(k == KeyEvent.VK_DOWN)
+                {
+                    if(nowY < 1000 - grid_px)
+                    {
+                        nowY += grid_px;
+                    }
+                    src_crop.y = 0;
+                    repaint();
+                }
+                if(k == KeyEvent.VK_UP)
+                {
+                    if(nowY > 125)
+                    {
+                        nowY -= grid_px;
+                    }
+                    src_crop.y = 260;
+                    repaint();
+                }
+                if(k == KeyEvent.VK_RIGHT)
+                {
+                    if(nowX < 900 - grid_px)
+                    {
+                        nowX += grid_px;
+                    }
+                    src_crop.y = 174;
+                    repaint();
+                }
+                if(k == KeyEvent.VK_LEFT)
+                {
+                    if(nowX > 0)
+                    {
+                        nowX -= grid_px;
+                    }
+                    src_crop.y = 86;
+                    repaint();
+                }
+            }
+        });
+
+        addWindowListener(
+                new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        System.exit(0);
+                    }
+                }
+        );
+
+    }
+
+    static void initLabels()
+    {
+        time.setBounds(3,6,150,80);
+        time.setBackground(Color.orange);
+        time.setFont(font25);
+        time.setAlignment(Label.CENTER);
+
+        status.setBounds(160,6,575,80);
+        status.setBackground(Color.white);
+        status.setFont(font25);
+        status.setAlignment(Label.CENTER);
+
+        score.setBounds(740,6,150,80);
+        score.setBackground(Color.orange);
+        score.setFont(font25);
+        score.setAlignment(Label.CENTER);
+
+    }
+
+    static void readImg() throws IOException
+    {
+        bg = ImageIO.read(new File("src/grass.png"));
+        main_png = ImageIO.read(new File("src/main.png"));
+        materials = ImageIO.read(new File("src/material.png"));
+    }
+
+    @Override
+    public void paint(Graphics g)
+    {
+        int width = this.getWidth();
+        int height = this.getHeight();
+        int img_w = bg.getWidth();
+        int img_h = bg.getHeight();
+        // Draw the previously loaded image to Component.
+
+        for(int h = 0; h < (height/img_h) + 1; ++h)
+        {
+            for(int w = 0; w < (width/img_w) + 1; ++w)
+            {
+                g.drawImage(bg, img_w * w, img_h * h+125, null);
+            }
+        }
+        bg_set = true;
+
+        int [][] tree_crop = {
+                {256,192},
+                {288,192}
+        };
+
+        for(int n = 0; n < 10; ++n)
+        {
+            for(int t = 0; t < 10; ++t)
+            {
+                int grid_x = n * grid_px, grid_y = t * grid_px + 125;
+                if(GameBoard[n][t] == 1)
+                {
+                    int rand = (int)(Math.random() * 2);
+                    g.drawImage(materials, grid_x, grid_y,grid_x+grid_px,grid_y+grid_px, tree_crop[rand][0], tree_crop[rand][1], tree_crop[rand][0]+32,tree_crop[rand][1]+32, null);
+                }
+            }
+        }
+        g.clipRect(nowX, nowY, grid_px, grid_px);
+        g.fillRect(nowX, nowY, grid_px, grid_px);
+        g.drawImage(main_png, nowX,nowY,nowX+grid_px,nowY+grid_px, 0, src_crop.y, src_crop.width,src_crop.y+src_crop.height, null);
+
+    }
+}
